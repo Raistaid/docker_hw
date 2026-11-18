@@ -1,22 +1,8 @@
 # Отчёт о проверках
 
-Docker Engine 29.10.0, Docker Compose v5.8.0.
-
 ## 4 балла. Один контейнер
 
-```sh
-docker build -t docker-hw:sqlite .
-docker run -d --name docker-hw-single -p 127.0.0.1:18084:8000 \
-  -e GREETING="Привет из одного контейнера!" docker-hw:sqlite
-curl -fsS --retry 10 --retry-delay 1 --retry-all-errors http://127.0.0.1:18084/readyz
-curl -fsS http://127.0.0.1:18084/
-curl -fsS -X POST http://127.0.0.1:18084/increment
-curl -fsS http://127.0.0.1:18084/
-docker logs docker-hw-single
-docker rm -f docker-hw-single
-```
-
-Первый GET вернул `0`. После POST счётчик стал `1`. В ответах было приветствие «Привет из одного контейнера!».
+На порту `18084` приложение ответило с приветствием «Привет из одного контейнера!». Первый GET вернул `0`, после POST счётчик стал `1`. [Команды запуска](README.md#один-контейнер-с-sqlite-4-балла)
 
 ```text
 2026-11-18 15:49:37,419 listening port=8000 storage=sqlite
@@ -28,22 +14,12 @@ docker rm -f docker-hw-single
 
 ## 6 баллов. SQLite в Compose
 
-```sh
-sqlite() {
-  APP_PORT=18086 docker compose -p docker-hw-report-sqlite \
-    --env-file .env.example -f compose.sqlite.yaml "$@"
-}
-sqlite up --build -d
-curl -fsS --retry 10 --retry-delay 1 --retry-all-errors http://127.0.0.1:18086/
-curl -fsS -X POST http://127.0.0.1:18086/increment
-curl -fsS -X POST http://127.0.0.1:18086/increment
-sqlite down
-sqlite up -d
-curl -fsS --retry 10 --retry-delay 1 --retry-all-errors http://127.0.0.1:18086/
-sqlite down -v
-```
+С `APP_PORT=18086` и `--env-file .env.example` два POST дали `count=2`. После `down` и `up -d` контейнер сменился, а счётчик из тома `sqlite-data` остался равен `2`. [Команды запуска](README.md#compose-с-sqlite-6-баллов)
 
-На порту `18086` приложение вернуло приветствие из `.env.example`. После двух POST счётчик был равен `2`. После пересоздания контейнера значение сохранилось в томе `sqlite-data`.
+```text
+{"greeting": "Привет из Docker!", "count": 2, "hostname": "f8881efb779b", "storage": "sqlite"}
+{"greeting": "Привет из Docker!", "count": 2, "hostname": "0a8641f49452", "storage": "sqlite"}
+```
 
 ## 8 баллов. Redis
 
@@ -57,12 +33,14 @@ for i in 1 2 3; do curl -fsS -X POST http://127.0.0.1:18088/increment; done
 stack down
 stack up -d --wait --wait-timeout 60
 curl -fsS http://127.0.0.1:18088/
+stack ps -q app
 stack stop redis
 curl --disable -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:18088/healthz
 curl --disable -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:18088/readyz
 curl --disable -sS -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:18088/increment
 stack start redis
 curl -fsS --retry 15 --retry-delay 1 --retry-all-errors http://127.0.0.1:18088/readyz
+stack ps -q app
 curl -fsS http://127.0.0.1:18088/
 curl -fsS -X POST http://127.0.0.1:18088/increment
 ```
