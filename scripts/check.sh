@@ -33,7 +33,7 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 request() {
-    curl --noproxy '*' --silent --show-error --connect-timeout 2 --max-time 5 "$@"
+    curl --disable --noproxy '*' --silent --show-error --connect-timeout 2 --max-time 5 "$@"
 }
 
 wait_ready() {
